@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip A Coin</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Ethers.js Library -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <!-- Stylesheet -->
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: "Rubik", sans-serif;
+        }
+        body {
+            height: 100%;
+            background: #1f5a82;
+        }
+        .container {
+            background-color: #ffffff;
+            width: 400px;
+            padding: 35px;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 50%;
+            box-shadow: 15px 30px 35px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            perspective: 300px;
+        }
+        .stats {
+            display: flex;
+            color: #101020;
+            font-weight: 500;
+            padding: 20px;
+            margin-bottom: 40px;
+            margin-top: 55px;
+            box-shadow: 0 0 20px rgba(0, 139, 253, 0.25);
+        }
+        .stats p:nth-last-child(1) {
+            margin-left: 50%;
+        }
+        .coin {
+            height: 150px;
+            width: 150px;
+            position: relative;
+            margin: 32px auto;
+            transform-style: preserve-3d;
+        }
+        .coin img {
+            width: 145px;
+        }
+        .heads, .tails {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+        }
+        .tails {
+            transform: rotateX(180deg);
+        }
+        @keyframes spin-tails {
+            0% {
+                transform: rotateX(0);
+            }
+            100% {
+                transform: rotateX(1980deg);
+            }
+        }
+        @keyframes spin-heads {
+            0% {
+                transform: rotateX(0);
+            }
+            100% {
+                transform: rotateX(2160deg);
+            }
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            width: 150px;
+            padding: 15px 0;
+            border: none;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #flip-button {
+            background-color: #053469;
+            color: #ffffff;
+        }
+        #flip-button:disabled {
+            background-color: #e1e0ee;
+            border-color: #e1e0ee;
+            color: #101020;
+        }
+        #reset-button {
+            background-color: #674706;
+            color: white;
+        }
+        #connect-wallet-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Flip a Coin</h2>
+        <button id="connect-wallet-button">Connect Wallet</button>
+        
+        <label for="side-select">Choose Side:</label>
+        <select id="side-select">
+            <option value="heads">Heads</option>
+            <option value="tails">Tails</option>
+        </select>
+
+        <input type="number" id="bet-amount" placeholder="Enter bet amount in ETH">
+
+        <div class="coin" id="coin">
+            <div class="heads">
+                <img src="head.jpg">
+            </div>
+            <div class="tails">
+                <img src="tails.jfif">
+            </div>
+        </div>
+        
+        <div class="stats">
+            <p id="heads-count">Heads: 0</p>
+            <p id="tails-count">Tails: 0</p>
+        </div>
+
+        <div class="buttons">
+            <button id="flip-button">Flip Coin</button>
+            <button id="reset-button">Reset</button>
+        </div>
+
+        <p id="result-message"></p>
+    </div>
+
+    <!-- Script -->
+    <script type="text/javascript">
+        let heads = 0;
+        let tails = 0;
+        let coin = document.querySelector(".coin");
+        let flipBtn = document.querySelector("#flip-button");
+        let resetBtn = document.querySelector("#reset-button");
+        let connectWalletBtn = document.querySelector("#connect-wallet-button");
+        let provider, signer;
+
+        // Connect to MetaMask
+        connectWalletBtn.addEventListener("click", async () => {
+            if (window.ethereum) {
+                try {
+                    await ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    alert("Wallet connected");
+                    connectWalletBtn.disabled = true;
+                } catch (error) {
+                    console.error(error);
+                }
+            } else {
+                alert("Please install MetaMask!");
+            }
+        });
+
+        flipBtn.addEventListener("click", async () => {
+            let i = Math.floor(Math.random() * 2);
+            let selectedSide = document.querySelector("#side-select").value;
+            let betAmount = parseFloat(document.querySelector("#bet-amount").value);
+            let amountInWei = ethers.utils.parseEther(betAmount.toString());
+
+            coin.style.animation = "none";
+            if (i) {
+                setTimeout(function() {
+                    coin.style.animation = "spin-heads 3s forwards";
+                }, 100);
+                heads++;
+            } else {
+                setTimeout(function() {
+                    coin.style.animation = "spin-tails 3s forwards";
+                }, 100);
+                tails++;
+            }
+
+            setTimeout(async () => {
+                updateStats();
+                await checkResult(i ? 'heads' : 'tails', selectedSide, betAmount, amountInWei);
+            }, 3000);
+
+            disableButton();
+        });
+
+        function updateStats() {
+            document.querySelector("#heads-count").textContent = `Heads: ${heads}`;
+            document.querySelector("#tails-count").textContent = `Tails: ${tails}`;
+        }
+
+        function disableButton() {
+            flipBtn.disabled = true;
+            setTimeout(function() {
+                flipBtn.disabled = false;
+            }, 3000);
+        }
+
+        async function checkResult(flipResult, selectedSide, betAmount, amountInWei) {
+            let resultMessage = document.querySelector("#result-message");
+            if (flipResult === selectedSide) {
+                resultMessage.textContent = `You won! You get ${betAmount * 2} ETH.`;
+                await sendTransaction(amountInWei); // Send winnings
+            } else {
+                resultMessage.textContent = `You lost! Better luck next time.`;
+            }
+        }
+
+        async function sendTransaction(amount) {
+            const tx = {
+                to: await signer.getAddress(), // Sending to the user's wallet
+                value: amount // Amount in wei
+            };
+            try {
+                const transaction = await signer.sendTransaction(tx);
+                await transaction.wait();
+                alert("Transaction successful! Winnings sent to your wallet.");
+            } catch (error) {
+                console.error("Transaction failed:", error);
+            }
+        }
+
+        resetBtn.addEventListener("click", () => {
+            coin.style.animation = "none";
+            heads = 0;
+            tails = 0;
+            updateStats();
+            document.querySelector("#result-message").textContent = "";
+        });
+    </script>
+</body>
+</html>
